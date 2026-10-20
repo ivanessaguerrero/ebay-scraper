@@ -2,6 +2,7 @@ import argparse
 import json
 import csv
 import time
+import re
 
 import requests
 from bs4 import BeautifulSoup
@@ -15,13 +16,15 @@ def get_text(item, selector):
 
 
 def dollars_to_cents(text):
-    number = text.split()[0]
-    number = number.strip('+$').replace(',', '')
-    if '.' in number:
-        dollars, cents = number.split('.')
+    match = re.search(r'(\d[\d,]*)(\.\d+)?', text)
+    if match is None:
+        return None
+    dollars = int(match.group(1).replace(',', ''))
+    if match.group(2) is None:
+        cents = 0
     else:
-        dollars, cents = number, '0'
-    return int(dollars) * 100 + int(cents)
+        cents = int(match.group(2)[1:3].ljust(2, '0'))
+    return dollars * 100 + cents
 
 
 def parse_price(item):
@@ -51,8 +54,10 @@ def parse_items_sold(item):
     text = get_text(item, '.s-item__hotness')
     if text is None:
         return None
-    number = text.split()[0].replace(',', '')
-    return int(number)
+    match = re.search(r'\d[\d,]*', text)
+    if match is None:
+        return None
+    return int(match.group().replace(',', ''))
 
 
 def parse_listings(html):
